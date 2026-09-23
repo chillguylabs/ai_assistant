@@ -1,0 +1,12 @@
+{
+  "sensor.wassersensor_2_total_water_usage": {
+    "aliases": [
+      "water usage",
+      "water sensor",
+      "total water",
+      "water consumption",
+      "how much water"
+    ],
+    "unit": "L"
+  }
+}

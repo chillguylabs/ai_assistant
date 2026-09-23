@@ -1,0 +1,110 @@
+from fastapi import FastAPI
+import requests
+import re
+from pydantic import BaseModel
+import json
+
+app = FastAPI()
+
+
+# CONFIG
+HA_URL = "http://homeassistant.local:8123"
+HA_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkODYzNTQ4NzhiZjE0ZTgyYjM1MDE2OWQ1NzZiY2IyNCIsImlhdCI6MTc3ODA3MjIxMCwiZXhwIjoyMDkzNDMyMjEwfQ.EkAQnITDHDSmOuljVWAozKrLbXjwn0zwFIutIwUPnwM"
+
+
+HEADERS = {
+    "Authorization": f"Bearer {HA_TOKEN}",
+    "Content-Type": "application/json",
+}
+
+
+# LOAD MAPPINGS
+with open("mappings.json", "r") as f:
+    ENTITY_MAP = json.load(f)
+
+
+# REQUEST / RESPONSE MODELS (IMPORTANT FOR OPENWEBUI)
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    response: str
+    entity: str | None = None
+
+
+# to get values from home assistant
+def get_state(entity_id: str):
+    url = f"{HA_URL}/api/states/{entity_id}"
+    r = requests.get(url, headers=HEADERS)
+
+    if r.status_code != 200:
+        return None
+
+    return r.json()
+
+
+# to find the matching sensor from the json file 
+def find_entity(text: str):
+    text = text.lower()
+
+    best_match = None
+    best_score = 0
+
+    for entity_id, data in ENTITY_MAP.items():
+        for alias in data.get("aliases", []):
+            alias = alias.lower()
+
+            if alias in text:
+                score = len(alias)
+
+                if score > best_score:
+                    best_score = score
+                    best_match = entity_id
+
+    return best_match
+
+
+# to make a response to give out to the user 
+def format_response(entity_id, data):
+    if not data:
+        return "I could not fetch data from Home Assistant."
+
+    state = data.get("state")
+    attrs = data.get("attributes", {})
+
+    unit = attrs.get("unit_of_measurement", "")
+    friendly = attrs.get("friendly_name", entity_id)
+
+    try:
+        state = float(state)
+        state = round(state, 2)
+    except:
+        pass
+
+    if unit:
+        return f"{friendly} is {state} {unit}"
+    else:
+        return f"{friendly} is {state}"
+
+
+# MAIN ENDPOINT (UPDATED)
+@app.post("/chat", response_model=ChatResponse)
+def chat(payload: ChatRequest):
+
+    text = payload.message
+
+    entity_id = find_entity(text)
+
+    if not entity_id:
+        return ChatResponse(
+            response="I couldn't match your request to any Home Assistant device.",
+            entity=None
+        )
+
+    data = get_state(entity_id)
+    response = format_response(entity_id, data)
+
+    return ChatResponse(
+        response=response,
+        entity=entity_id
+    )

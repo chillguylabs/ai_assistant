@@ -1,0 +1,1 @@
+docker exec -it postgres-dev su postgres -c psql

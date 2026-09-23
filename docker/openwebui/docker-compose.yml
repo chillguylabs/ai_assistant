@@ -1,0 +1,27 @@
+
+
+volumes:
+  webui_data:
+  webui_extensions:
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    environment:
+      - HOST=0.0.0.0
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_API_BASE_URL=http://host.docker.internal:11434
+      - DEFAULT_MODELS=llama3:latest
+      - WEBUI_AUTH=true
+      - WEBUI_REGISTRATION=true
+      - WEBUI_PUBLIC_MODELS=true
+      - WEBUI_NAME=SHTECHLAB AI
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - webui_data:/app/data
+      - webui_extensions:/app/extensions

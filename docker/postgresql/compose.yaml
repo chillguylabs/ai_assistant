@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:18
+    container_name: postgres-dev
+    environment:
+      POSTGRES_PASSWORD: shtechlab1337
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: unless-stopped
+    ports:
+      - "8888:8080"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
